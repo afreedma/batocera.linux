@@ -25,9 +25,14 @@ jobs:
       # Step 2: Surgical sed patches for T2 Kernel
       - name: Inject T2 Patches
         run: |
-          sed -i 's|LINUX_SITE =.*|LINUX_SITE = https://github.com/t2linux/linux-t2.git|' package/linux/linux.mk
-          sed -i 's|LINUX_SITE_METHOD =.*|LINUX_SITE_METHOD = git|' package/linux/linux.mk
-          sed -i 's|LINUX_VERSION =.*|LINUX_VERSION = v6.6.13-t2|' package/linux/linux.mk
+          # Locate the file dynamically just in case
+          LINUX_MK=$(find . -name "linux.mk" | grep "package/batocera/core/linux/linux.mk")
+          echo "Targeting: $LINUX_MK"
+          
+          # Apply the patches to the correct path
+          sed -i 's|LINUX_SITE =.*|LINUX_SITE = https://github.com/t2linux/linux-t2.git|' "$LINUX_MK"
+          sed -i 's|LINUX_SITE_METHOD =.*|LINUX_SITE_METHOD = git|' "$LINUX_MK"
+          sed -i 's|LINUX_VERSION =.*|LINUX_VERSION = v6.6.13-t2|' "$LINUX_MK"
 
       # Step 3: Run the build inside the Batocera Docker container
       # We target 'linux' and 'batocera-emulationstation' to save space
