@@ -1,0 +1,43 @@
+name: Batocera T2 Factory
+on:
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Reclaim ~60GB of disk space
+      - name: Maximize Build Space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 2048
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      # Step 2: Surgical sed patches for T2 Kernel
+      - name: Inject T2 Patches
+        run: |
+          sed -i 's|LINUX_SITE =.*|LINUX_SITE = https://github.com/t2linux/linux-t2.git|' package/linux/linux.mk
+          sed -i 's|LINUX_SITE_METHOD =.*|LINUX_SITE_METHOD = git|' package/linux/linux.mk
+          sed -i 's|LINUX_VERSION =.*|LINUX_VERSION = v6.6.13-t2|' package/linux/linux.mk
+
+      # Step 3: Run the build inside the Batocera Docker container
+      # We target 'linux' and 'batocera-emulationstation' to save space
+      - name: Build Lite Image
+        run: |
+          docker run -v $(pwd):/build batocera/batocera-docker:latest \
+          bash -c "make x86_64_defconfig && make linux batocera-emulationstation"
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: t2-lite-build
+          path: output/images/
